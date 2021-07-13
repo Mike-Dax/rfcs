@@ -314,21 +314,3 @@ Ideally mono-repos containing native modules can also use this for internal reso
 ### Zero Installs
 
 I'd like a feature where yarn can be instructed to pull every variant possible in the matrix(es), the resulting yarn cache is portable, and with an `install` step, can be used on any supported OS without network requirements.
-
-I'm not familiar enough with PnP to know if it's possible to move some of this variant logic into the hook itself? Perhaps that's a goal for a future PR after an initial one?
-
-### PR requests
-
-I'd like to at least prototype the method described in this RFC so I'd love some guidance on some technical details in addition to general comments.
-
-The WIP is available here:
-
-https://github.com/Mike-Dax/berry/pull/1/files
-
-
-
-What's the most idiomatic way to 'replace' a package?
-
-Where should this variant information be stored? Does it need to be in the yarn.lock?
-
-Is there an idiomatic way to get the manifest from a package?
