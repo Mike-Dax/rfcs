@@ -239,6 +239,8 @@ It's throwing another 'standard' into a sea of standards.
 
 
 
+Publishing the combinations of packages required will be a hassle, but can be alleviated with good tooling.
+
 # Alternatives
 
 ### Implementing `os` and `arch` compatibility guards
@@ -314,3 +316,151 @@ Ideally mono-repos containing native modules can also use this for internal reso
 ### Zero Installs
 
 I'd like a feature where yarn can be instructed to pull every variant possible in the matrix(es), the resulting yarn cache is portable, and with an `install` step, can be used on any supported OS without network requirements.
+
+
+
+---
+
+Deviations from https://github.com/yarnpkg/berry/issues/2751
+
+The above was written before the berry RFC was seen, I've addressed some specific differences below:
+
+
+
+#### `include` key for variants
+
+My assumption would be the `matrix` would be the preferred method of declaring the options, but adding an explicit `include` key doesn't seem harmful.
+
+For our use case we only have certain operating systems on certain architectures, and the combination of a matrix and some includes would certainly be less verbose than an exhaustive matrix and many excludes. That being said, multiple variants with the same pattern but different parameter matrices would also work.
+
+For example:
+
+```json
+"variants": [{
+		"pattern": "@scope/package-build-%platform-%arch"
+    "matrix": {
+        "platform": {
+            "candidates": [
+                "darwin",
+            ],
+        },
+        "arch": {
+            "candidates": [
+                "x64",
+                "arm64",
+            ],
+        },
+    },
+},
+{
+		"pattern": "@scope/package-build-%platform-%arch"
+    "matrix": {
+        "platform": {
+            "candidates": [
+                "linux",
+                "windows"
+            ],
+        },
+        "arch": {
+            "candidates": [
+                "x64",
+            ],
+        },
+    },
+}],
+```
+
+
+
+#### Multiple patterns
+
+I would disagree with the creation of a DSL, or complicated templating logic for the creation of the pattern string. Given package maintainers will have to write these patterns, I would argue the simplest API possible should be used.
+
+Additionally, ideally package maintainers don't have to change their packages at all and the pattern matching is powerful enough to fetch them.
+
+In my current use case there are some packages with both napi and non-napi versions for example, given a current migration to napi. Some packages have wasm builds available. SIMD support in wasm currently requires two different builds, one for wasm and one without.
+
+
+
+Consider an example of a package that builds for different `platform`, `arch` and `napi` combinations, and a `wasm` build where the `arch` and `napi` parameters don't make sense. Consider the `wasm` build has a SIMD version and a non SIMD version. The non-wasm versions do their SIMD support at runtime.
+
+I would argue multiple pattern support provides the simplest way to represent this:
+
+`@scope/package-build-%platform-%arch-%napi` for non-wasm builds, then
+
+`@scope/package-build-%wasm-%simd` where a specific `wasm` key is either set to `wasm`, or unset, and a `simd` key can be either `simd-supported` or `no-simd`.
+
+
+
+
+
+#### Fetching the original package
+
+I would assume the original package wouldn't need be fetched, only its Manifest would be fetched from the Resolver, then it can be replaced if a variant can be found?
+
+I would think some packages would want to not modify their current distribution at all, except providing this variants feature in the package.json, then publishing the packages. If the current distribution is a 'fat' package, and it's fetched, the bandwidth savings are wasted.
+
+
+
+#### Cache integration and custom parameters
+
+Given the existence of custom parameters, it seems inevitable that multiple packages will create the same keys and use different values. 
+
+This probably isn't a problem in practice, consider two packages with the following matrices:
+
+```
+platform: [win32, darwin, linux]
+napi: [6, 5]
+js: [cjs, esm]
+```
+
+```
+platform: [win32, darwin, linux]
+napi: [6, 4]
+js: [es6, es2015, es2020]
+```
+
+The JS parameter is different between them, but the cache config could just include everything required:
+
+```yaml
+cacheParameters:
+  matrix:
+    platform: [win32, osx]
+    napi: [6, 4]
+    js: [cjs, esm, es6, es2015, es2020]
+```
+
+Then when pulling them in, yarn still knows statically which options are available for each package.
+
+
+
+#### Context-free solutions
+
+I'd like to know more about the context-free requirement, because it sounds like it's incompatible with our use case of a monorepo with both Electron and Node workspaces, requiring different versions of a package that's not necessarily a direct descendent.
+
+```
+serialport-dependency
+  - node-serialport (needs to be node-serialport node-abi:78 platform:linux)
+
+electron-workspace
+ - serialport-dependency
+   - node-serialport (needs to be node-serialport electron-abi:89 platform:linux)
+   
+node-workspace
+ - serialport-dependency
+   - node-serialport (needs to be node-serialport node-abi:78 platform:linux)
+   
+```
+
+ We could possibly hoist it up as a peerDependency?
+
+
+
+
+
+#### Parameter cascade
+
+Explicit opt-in for cascading parameters is interesting and probably better than implicit. I think I'll need to think about this more.
+
+
+
