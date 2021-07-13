@@ -464,3 +464,13 @@ Explicit opt-in for cascading parameters is interesting and probably better than
 
 
 
+#### Pattern Reference instead of name
+
+As per the discussion on Discord, with a special `version` parameter, instead of having the pattern be a package name, it could be a package reference:
+
+```
+npm:@prisma/prisma-build-%platform-%napi@%version
+https://cdn.foo.com/prisma-build-%platform-%napi-%version.tgz
+```
+
+This feels like a good direction to go in.
