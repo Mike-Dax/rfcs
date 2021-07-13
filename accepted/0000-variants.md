@@ -25,7 +25,7 @@ A unified method of native module publishing with the following high level goals
 4. Fetching these artifacts is the responsibility of the package manager.
 5. Some level of zero-install-ish support.
 
-#### Native artifacts are stored in the registry.
+### Native artifacts are stored in the registry.
 
 Storage of artifacts in the registry results in fewer points of failure. 
 
@@ -33,7 +33,7 @@ GitHub isn't a particularly good CDN.
 
 We've had outright failures to install due to GitHub CDN failures in the past when NPM has been functioning fine, and frequently have slow downloads from GitHub's CDN.
 
-#### Package the minimum artifacts for any given operating system / platform.
+### Package the minimum artifacts for any given operating system / platform.
 
 Packaging every combination of supported platforms into the npm release results in a combinatorial explosion of bandwidth required for a singular download. Ideally, only the artifacts required are fetched. 
 
@@ -41,17 +41,17 @@ We had one instance where a Golang native dependency, when compiled for 32bit wi
 
 One of our dependencies tries to pull in 100MB of unnecessary native modules per download as a result of their chosen prebuild solution.
 
-#### Statically link the native modules.
+### Statically link the native modules.
 
 The bundler of choice should be able to statically analyse the dependency tree, including the native module resolution. Webpack for example should be able to take the file and treat it like any other asset, giving it a hash, storing it as per its ruleset.
 
 I often see Electron apps that use bundlers marking the entire native module package as `external` , resulting in the distribution of significant unnecessary files, such as the source code, docs, and often due to violating other goals, the native dependencies for other operating systems.
 
-#### Fetching responsibility
+### Fetching responsibility
 
 Running build scripts takes a long time, and is prone to failure. The package manager has all the information it needs to do this job, and in packages with native modules, the native bit is part of the package and should also be fetched.
 
-#### Zero install support
+### Zero install support
 
 It is valuable to be able to copy the cache directory and be sure that later, the application will be able to build and run. 
 
@@ -59,7 +59,7 @@ We pass the yarn cache around on CI to speed up our pipelines, but due to our us
 
 Zero install support is essentially at odds with static linking, so a compromise will probably need to be found.
 
-### Prior art
+## Prior art
 
 [Prebuild](https://github.com/prebuild/prebuild) uploads artifacts out of band, then downloads them with an install script. Only what's needed is pulled. The artifacts aren't statically linked. This solution requires build scripts.
 
@@ -77,7 +77,7 @@ Our related prototypes:
 
 [yarn-prebuilds](https://github.com/electricui/yarn-prebuilds) is a plugin that rewrites dependencies on the [bindings](https://github.com/TooTallNate/node-bindings) package, fetching the native module from the prebuild-compatible repository and statically linking it in place of the bindings package. It works well enough but the config is scope driven, and different packages have different prebuild mirrors with different formats that can't all be encapsulated in a singular pattern. Since it's a yarn plugin, no build scripts are required.
 
-### Our User Story
+## Our User Story
 
 We have a monorepo that contains various packages, including Electron applications and templates, and a [hardware-in-the-loop testing framework](https://electricui.com/blog/hardware-testing). (You may find the [logging familiar](https://asciinema.org/a/392751), thank you!)
 
@@ -115,7 +115,7 @@ If I as a consumer of packages believes strongly in this variants approach, in s
 
 Variants store their artifacts as other registry packages, only download exactly what's required, statically link by replacing the package, and are fetched by the package manager instead of a build install script.
 
-#### Variant format
+### Variant format
 
 An array of objects with keys of `pattern`, `matrix` and `exclude`, let's call them variant objects. The `pattern` defines the template string to replace parameters within. The `matrix` defines the possibilities of the parameters supported. The `exclude` defines any specific combinations that aren't allowed.
 
@@ -167,7 +167,7 @@ A final fallback can be set with an object with only a `pattern` key.
 
 
 
-#### Parameters are cascaded (by plugins only?)
+### Parameters are cascaded (by plugins only?)
 
 A `reduceVariantStartingParameters` hook lets plugins set keys that are propagated per workspace. These would be used to set things based on the Node runtime, for example the platform, arch, etc.
 
@@ -179,7 +179,7 @@ A `reduceVariantParameterComparators` hook lets plugins define compatibility rel
 
 Parameters set by these would cascade to dependents implicitly. I'm not sure whether to allow cascading parameters, set in the workspace package.json file. That would not be required by our use case, given our use cases' requirement for a plugin to provide information.
 
-#### Parameters can be set explicitly for certain packages with dependenciesMeta
+### Parameters can be set explicitly for certain packages with dependenciesMeta
 
 These parameters do not cascade, and only affect the specified dependency.
 
@@ -195,7 +195,7 @@ These parameters do not cascade, and only affect the specified dependency.
 
 
 
-#### Variant information can be set as package extensions
+### Variant information can be set as package extensions
 
 For example, replacing `app-builder-bin` with our variant-compatible packages.
 
@@ -241,13 +241,13 @@ It's throwing another 'standard' into a sea of standards.
 
 # Alternatives
 
-#### Implementing `os` and `arch` compatibility guards
+### Implementing `os` and `arch` compatibility guards
 
 This would allow solutions like napi-rs to work without pulling every dependency. Ideally this would be controllable via plugins. Perhaps this should be done anyway?
 
 It doesn't solve our use case for fetching Electron compiled modules in one workspace and Node compiled modules in another.
 
-#### Implementation in plugin space
+### Implementation in plugin space
 
 With additional hooks or manifest information exposed in the `reduceDependency` hook, it might be possible to implement this in plugin-space?
 
@@ -311,13 +311,13 @@ Ideally mono-repos containing native modules can also use this for internal reso
 
 ---
 
-#### Zero Installs
+### Zero Installs
 
 I'd like a feature where yarn can be instructed to pull every variant possible in the matrix(es), the resulting yarn cache is portable, and with an `install` step, can be used on any supported OS without network requirements.
 
 I'm not familiar enough with PnP to know if it's possible to move some of this variant logic into the hook itself? Perhaps that's a goal for a future PR after an initial one?
 
-#### PR requests
+### PR requests
 
 I'd like to at least prototype the method described in this RFC so I'd love some guidance on some technical details in addition to general comments.
 
@@ -332,4 +332,3 @@ What's the most idiomatic way to 'replace' a package?
 Where should this variant information be stored? Does it need to be in the yarn.lock?
 
 Is there an idiomatic way to get the manifest from a package?
-
